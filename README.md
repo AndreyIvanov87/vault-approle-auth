@@ -1,93 +1,240 @@
-# vault-approle-auth
+# AppRole Auth Method Go Example
 
+Метод авторизации approle позволяет компьютерам или приложениям проходить аутентификацию с помощью ролей, определенных Vault.
+Этот метод аутентификации ориентирован на автоматизированные рабочие процессы (машины и сервисы) и менее полезен для людей-операторов.
 
+«AppRole» представляет собой набор политик Vault и ограничений входа в систему, которые должны быть соблюдены для получения токена с этими политиками. 
+Объем может быть как узким, так и широким по желанию. AppRole может быть создан для конкретной машины, или даже для конкретного пользователя на этой машине,
+или для службы, распределенной по машинам. Учетные данные, необходимые для успешного входа в систему, зависят от ограничений, установленных для AppRole,
+связанного с учетными данными.
 
-## Getting started
+## Конфигурация Vault
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Методы аутентификации должны быть настроены заранее, прежде чем пользователи или машины смогут аутентифицироваться. 
+Эти шаги обычно выполняются оператором или инструментом управления конфигурацией.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Подготовка
+Для конфигурирования данного метода авторизации можно использовать root token. Что само по себе не безопасно и не рекомендуется.
+Хорошей практикой создавать отдельные учетные записи для каждого инженереа, или например включить авторизацию через LDAP.
 
-## Add your files
-
-- [ ] [Create](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+#### У пользователя выполняющего дальнейшие действия должна быть привязана следующая политика:
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/k11s-os/vault-approle-auth.git
-git branch -M main
-git push -uf origin main
+# Mount the AppRole auth method
+path "sys/auth/approle" {
+  capabilities = [ "create", "read", "update", "delete", "sudo" ]
+}
+
+# Configure the AppRole auth method
+path "sys/auth/approle/*" {
+  capabilities = [ "create", "read", "update", "delete" ]
+}
+
+# Create and manage roles
+path "auth/approle/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+
+# Write ACL policies
+path "sys/policies/acl/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+
+# Write test data
+# Set the path to "secret/data/mysql/*" if you are running `kv-v2`
+path "secret/mysql/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
 ```
 
-## Integrate with your tools
+#### Настроить подключение к нужному инстансу Vault
 
-- [ ] [Set up project integrations](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://gitlab.com/k11s-os/vault-approle-auth/-/settings/integrations)
+```shell
+$ export VAULT_ADDR=http://127.0.0.1:8200
+$ export VAULT_TOKEN=your_token_here
+```
 
-## Collaborate with your team
+#### Добавить секретные данные используя cli если необходимо, или же добавьте нужные данные через GUI
 
-- [ ] [Invite team members and collaborators](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```shell
+$ vault kv put secrets/dc/env/app/service db_name="users" username="admin" password="passw0rd"
+```
 
-## Test and Deploy
+### Настройка
 
-Use the built-in continuous integration in GitLab.
+#### 1. Включить метод аутентификации
+```shell
+$ vault auth enable approle
+```
+#### 2. Создать политику для роли
 
-- [ ] [Get started with GitLab CI/CD](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```
+# Read-only permission on secrets stored at 'secret/data/mysql/webapp'
+path "secret/data/mysql/webapp" {
+  capabilities = [ "read" ]
+}
+```
 
-***
+```shell
+$ vault policy write -tls-skip-verify app_policy_name -<<EOF
+# Read-only permission on secrets stored at 'secrets/dc/env/app/service'
+path "secrets/dc/env/app/service" {
+  capabilities = [ "read" ]
+}
+EOF
 
-# Editing this README
+```
+#### 3. Создать роль
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://gitlab.com/-/experiment/new_project_readme_content:1f76a722a40406859e287a8f219c1e0c?https://www.makeareadme.com/) for this template.
+```shell
+$ vault write -tls-skip-verify auth/approle/role/my-app-role \
+  token_policies="app_policy_name" \
+  token_ttl=1h \
+  token_max_ttl=4h \
+  secret_id_bound_cidrs="0.0.0.0/0","127.0.0.1/32" \
+  token_bound_cidrs="0.0.0.0/0","127.0.0.1/32" \
+  secret_id_ttl=60m policies="app_policy_name" \
+  bind_secret_id=false
+```
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+#### 4. Проверить созданную роль
 
-## Name
-Choose a self-explaining name for your project.
+```shell
+$ vault read -tls-skip-verify auth/approle/role/my-app-role
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+#### 5. Получить RoleID
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```shell
+$ vault read -tls-skip-verify auth/approle/role/my-app-role/role-id
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+**RoleID** - это идентификатор, который выбирает AppRole, по которому оцениваются другие учетные данные. 
+При аутентификации по конечной точке входа в систему этого метода аутентификации RoleID всегда является обязательным аргументом (через role_id). 
+По умолчанию RoleID - это уникальные UUID, которые позволяют им служить вторичными секретами для другой информации об учетных данных. 
+Однако они могут быть установлены на определенные значения, чтобы соответствовать интроспективной информации клиента (например, доменному имени клиента).
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+> role_id - обязательные учетные данные в конечной точке входа. Для AppRole, на который указывает role_id будут наложены ограничения. 
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+> bind_secret_id - Требует обязательно или нет предоставлять secret_id в точке регистрации. Если значение будет true то Vault Agent не сможет авторизоваться.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Дополнительно можно настроить и другие ограничени для AppRole.
+Например, secret_id_bound_cidrs будет разрешено входить в систему только с IP-адресов, принадлежащих настроенным блокам CIDR на AppRole.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Документацию по AppRole API можно прочесть [тут.](https://www.vaultproject.io/api/auth/approle)
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Использование
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### Вариант 1
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+RoleID эквивалентен имени пользователя, а SecretID - соответствующему паролю. Приложению необходимо и то, и другое для входа в Vault.
+Естественно, следующий вопрос заключается в том, как безопасно доставить эти секреты клиенту.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Например, Ansible может использоваться как доверенный способ доставки RoleID на виртуальную машину.
+Когда приложение запускается на виртуальной машине, RoleID уже существует на виртуальной машине.
 
-## License
-For open source projects, say how it is licensed.
+![Vault AppRole Auth Diagram!](/img/vault-auth-basic-2.png "Vault AppRole Auth Diagram")
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+#### Для получения wrap token, который будет использоваться при авторизации и запросе secret-id выполните команду:
 
+```shell
+$ vault write -wrap-ttl=600s -tls-skip-verify -force auth/approle/role/my-app-role/secret-id
+```
+Затем полученный файл необходимо поместить на файловую систему виртуальной машины, где запускается наше приложение.
+Этот путь должен совпадать с тем, которое ожидает приложение. **Полученный токен может быть использован лишь один раз.** 
+После запуска, токен будет прочитан и использован для получения secret-id. 
+После получения secret-id приложение может запросить данные из секретного хранилища Vault пока не истек TTL для secret_id.
+Данный способ хорошо подходит в том случа, когда мы заполняем начальную конфигурацию приложения на этапе запуска. 
+Например применив паттерн Singleton заполняем значениями структуру Config.
+
+Рекомендации гласят что wrap token должен иметь время жизни равное времени деплоя приложения.
+В то время secret-id могут иметь длинное время жизни, но это не рекомендуется производителем в силу большого потребления
+памяти и нагрузке при очистке истекших токенов. Лучшая рекомендация гласит, что нужно использовать короткое время жизни
+и постоянно продлевать его. Тем самым избегат дорогих операций авторизации и выдачи новых токенов.
+
+### Вариант 2
+
+Для передачи secret-id можно использовать vault-agent, который позволяет зная только role-id получить secret-id из хранилища.
+При этом агент берет на себя функции по обновлению данного токена. Агент может поставлять как wrap token так и готовый 
+к использованию secret-id.
+
+#### Подготовка конфигурации агента vault-agent.hcl
+
+```
+pid_file = "./pidfile"
+
+auto_auth {
+  mount_path = "auth/approle"
+  method "approle" {
+    config = {
+      role_id_file_path = "./roleID"
+      secret_id_response_wrapping_path = "auth/approle/role/my-app-role/secret-id"
+    }
+  }
+
+  sink {
+    type = "file"
+    wrap_ttl = "30m"
+    config = {
+      path = "./token_wrapped"
+      }
+    }
+
+  sink {
+    type = "file"
+    config = {
+      path = "./token_unwrapped"
+      }
+    }
+}
+
+vault {
+  address = "https://127.0.0.1:8200"
+}
+
+```
+
+#### Файл c role-id roleID
+```text
+d6194f18-5419-af2d-0c19-17aea4ba0378
+```
+
+#### Запуск Vault Agent
+
+```shell
+$ vault agent -tls-skip-verify -config=vault-agent.hcl -log-level=debug
+```
+
+После запуска агента на файловой системе появятся два файла согласно нашей конфигурации.
+Первый файл будет в json формате и содержать данные wrap token для получения secret-id.
+Второй файл будет содержать secret-id готовый к применению для авторизации.
+Агент берет на себя функционал по обновлению ланных токенов.
+
+Применение такой конфигурации оправданно когда наше приложение постоянно читает или пишет данные в хранилище Vault.
+
+## Запуск приложения
+
+### Для сборки приложения можно использовать прилагаемый Makefile.
+
+#### Запуск сборки для Linux производится командой:
+
+```shell script
+$ make build-linux
+```
+
+#### Сборка для Mac OS:
+
+```shell script
+$ make build
+```
+
+#### Запуск без сборки для MacOS
+```shell script
+$ make run
+```
+
+#### Запуск без сборки для Linux
+
+```shell script
+$ make run-linux
+```
