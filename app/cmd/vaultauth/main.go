@@ -30,6 +30,8 @@ func newConfig() *vault.Config{
 		os.Exit(1)
 	}
 
+	fmt.Println("init connection to vault in addr %s", vaultAddr)
+
 	config := &vault.Config{
 		Address:      vaultAddr,
 		HttpClient:   cleanhttp.DefaultPooledClient(),
@@ -73,6 +75,7 @@ func newClient() (*vault.Client, error){
 		Insecure:      true,
 	}
 	if tls := len(os.Getenv("APPROLE_VAULT_TLS")); tls > 0 {
+		fmt.Println("vault tls connection enabling")
 		config.ConfigureTLS(&tlsConfig)
 	}
 
@@ -86,6 +89,7 @@ func newClient() (*vault.Client, error){
 
 func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 	roleID := os.Getenv("APPROLE_ROLE_ID")
+	fmt.Println("app role id is: %s", roleID)
 	if roleID == "" {
 		fmt.Println("no role ID was provided in APPROLE_ROLE_ID env var")
 		os.Exit(1)
@@ -106,6 +110,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 		data := wrappedTokenInfo{}
 		file, _ := ioutil.ReadFile(wrappenTokenFile)
 		_ = json.Unmarshal([]byte(file), &data)
+		fmt.Println("reading token is: %s", data.Token)
 		wrappenSecretID := &auth.SecretID{FromString: data.Token}
 		withWrappinToken, err := auth.NewAppRoleAuth(roleID, wrappenSecretID, auth.WithWrappingToken())
 		if err != nil {
@@ -114,7 +119,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 		return &vaultStorage{
 			client:     client,
 			appRole:    withWrappinToken,
-			secretPath: "secret/data/sample/go_webapp",
+			secretPath: "secret/data/k11s/demo/app/service",
 			secretKey:  "password",
 		}
 	}
@@ -133,7 +138,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 	return &vaultStorage{
 		client:     client,
 		appRole:    withUnwrappinToken,
-		secretPath: "secret/data/sample/go_webapp",
+		secretPath: "secret/data/k11s/demo/app/service",
 		secretKey:  "username",
 	}
 }
