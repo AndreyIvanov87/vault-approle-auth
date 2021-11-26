@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-retryablehttp"
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/approle"
+	"golang.org/x/net/http2"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"time"
 )
 
 type vaultStorage struct{
@@ -17,8 +23,47 @@ type vaultStorage struct{
 	secretKey string
 }
 
+func newConfig() *vault.Config{
+	vaultAddr := os.Getenv("APPROLE_VAULT_ADDR")
+	if vaultAddr == "" {
+		fmt.Println("no role ID was provided in APPROLE_VAULT_ADDR env var")
+		os.Exit(1)
+	}
+
+	config := &vault.Config{
+		Address:      vaultAddr,
+		HttpClient:   cleanhttp.DefaultPooledClient(),
+		Timeout:      time.Second * 60,
+		MinRetryWait: time.Millisecond * 1000,
+		MaxRetryWait: time.Millisecond * 1500,
+		MaxRetries:   2,
+		Backoff:      retryablehttp.LinearJitterBackoff,
+	}
+
+	transport := config.HttpClient.Transport.(*http.Transport)
+	transport.TLSHandshakeTimeout = 10 * time.Second
+	transport.TLSClientConfig = &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	if err := http2.ConfigureTransport(transport); err != nil {
+		config.Error = err
+		return config
+	}
+
+	if err := config.ReadEnvironment(); err != nil {
+		config.Error = err
+		return config
+	}
+
+	config.HttpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	return config
+}
+
 func newClient() (*vault.Client, error){
-	config := vault.DefaultConfig() // modify for more granular configuration
+	config := newConfig()
 	tlsConfig := vault.TLSConfig{
 		CACert:        "",
 		CAPath:        "",
@@ -27,7 +72,9 @@ func newClient() (*vault.Client, error){
 		TLSServerName: "",
 		Insecure:      true,
 	}
-	config.ConfigureTLS(&tlsConfig)
+	if tls := len(os.Getenv("APPROLE_VAULT_TLS")); tls > 0 {
+		config.ConfigureTLS(&tlsConfig)
+	}
 
 	client, err := vault.NewClient(config)
 	if err != nil {
@@ -127,7 +174,7 @@ func checkTokenFileExists(fileName string) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("no token file was provided in APPROLE_TOKEN_FILE env var")
+		return fmt.Errorf("no token file was provided in env var")
 	}
 	return nil
 }
