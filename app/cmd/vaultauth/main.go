@@ -109,6 +109,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 
 		data := wrappedTokenInfo{}
 		file, _ := ioutil.ReadFile(wrappenTokenFile)
+		fmt.Println("reading from file: %s", file)
 		_ = json.Unmarshal([]byte(file), &data)
 		fmt.Println("reading token is: %s", data.Token)
 		wrappenSecretID := &auth.SecretID{FromString: data.Token}
