@@ -120,7 +120,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 		return &vaultStorage{
 			client:     client,
 			appRole:    withWrappinToken,
-			secretPath: "secret/data/k11s/demo/app/service",
+			secretPath: "secrets/data/k11s/demo/app/service",
 			secretKey:  "password",
 		}
 	}
@@ -139,7 +139,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 	return &vaultStorage{
 		client:     client,
 		appRole:    withUnwrappinToken,
-		secretPath: "secret/data/k11s/demo/app/service",
+		secretPath: "secrets/data/k11s/demo/app/service",
 		secretKey:  "username",
 	}
 }
