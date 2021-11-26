@@ -26,11 +26,9 @@ type vaultStorage struct{
 func newConfig() *vault.Config{
 	vaultAddr := os.Getenv("APPROLE_VAULT_ADDR")
 	if vaultAddr == "" {
-		fmt.Println("no role ID was provided in APPROLE_VAULT_ADDR env var")
+		fmt.Println("no vault address was provided in APPROLE_VAULT_ADDR env var")
 		os.Exit(1)
 	}
-
-	fmt.Println("init connection to vault in addr %s", vaultAddr)
 
 	config := &vault.Config{
 		Address:      vaultAddr,
@@ -75,7 +73,6 @@ func newClient() (*vault.Client, error){
 		Insecure:      true,
 	}
 	if tls := len(os.Getenv("APPROLE_VAULT_TLS")); tls > 0 {
-		fmt.Println("vault tls connection enabling")
 		config.ConfigureTLS(&tlsConfig)
 	}
 
@@ -89,7 +86,6 @@ func newClient() (*vault.Client, error){
 
 func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 	roleID := os.Getenv("APPROLE_ROLE_ID")
-	fmt.Println("app role id is: %s", roleID)
 	if roleID == "" {
 		fmt.Println("no role ID was provided in APPROLE_ROLE_ID env var")
 		os.Exit(1)
@@ -109,9 +105,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 
 		data := wrappedTokenInfo{}
 		file, _ := ioutil.ReadFile(wrappenTokenFile)
-		fmt.Println("reading from file: %s", file)
 		_ = json.Unmarshal([]byte(file), &data)
-		fmt.Println("reading token is: %s", data.Token)
 		wrappenSecretID := &auth.SecretID{FromString: data.Token}
 		withWrappinToken, err := auth.NewAppRoleAuth(roleID, wrappenSecretID, auth.WithWrappingToken())
 		if err != nil {
