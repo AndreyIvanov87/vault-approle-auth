@@ -57,7 +57,7 @@ $ export VAULT_TOKEN=your_token_here
 #### Добавить секретные данные используя cli если необходимо, или же добавьте нужные данные через GUI
 
 ```shell
-$ vault kv put secrets/dc/env/app/service db_name="users" username="admin" password="passw0rd"
+$ vault kv put secrets/k11s/demo/app/service db_name="users" username="admin" password="passw0rd"
 ```
 
 ### Настройка
@@ -77,8 +77,8 @@ path "secret/data/mysql/webapp" {
 
 ```shell
 $ vault policy write -tls-skip-verify app_policy_name -<<EOF
-# Read-only permission on secrets stored at 'secrets/dc/env/app/service'
-path "secrets/dc/env/app/service" {
+# Read-only permission on secrets stored at 'secrets/k11s/demo/app/service'
+path "secrets/data/k11s/demo/app/service" {
   capabilities = [ "read" ]
 }
 EOF

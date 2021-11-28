@@ -91,6 +91,12 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 		os.Exit(1)
 	}
 
+	secretPath := os.Getenv("APPROLE_SECRET_PATH")
+	if roleID == "" {
+		fmt.Println("no peth to Vault secrets was provided in APPROLE_SECRET_PATH env var")
+		os.Exit(1)
+	}
+
 	if wrappenToken {
 		wrappenTokenFile := os.Getenv("APPROLE_WRAPPEN_TOKEN_FILE")
 		err := checkTokenFileExists(wrappenTokenFile)
@@ -114,7 +120,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 		return &vaultStorage{
 			client:     client,
 			appRole:    withWrappinToken,
-			secretPath: "secrets/data/k11s/demo/app/service",
+			secretPath: secretPath,
 			secretKey:  "password",
 		}
 	}
@@ -133,7 +139,7 @@ func newStorage(client *vault.Client, wrappenToken bool) *vaultStorage {
 	return &vaultStorage{
 		client:     client,
 		appRole:    withUnwrappinToken,
-		secretPath: "secrets/data/k11s/demo/app/service",
+		secretPath: secretPath,
 		secretKey:  "username",
 	}
 }
